@@ -49,6 +49,22 @@
         <aside id="panel">
           <h2>成员</h2>
           <ul id="bot-list"></ul>
+          <h2>下指令</h2>
+          <form id="command-form" class="command">
+            <label for="command-to">发给</label>
+            <select id="command-to">
+              <option value="lead">总工程师</option>
+              <option value="frontend">前端开发</option>
+              <option value="integration">集成开发</option>
+              <option value="qa">测试员</option>
+            </select>
+            <label for="command-text">指令</label>
+            <textarea id="command-text" rows="3" maxlength="2000" placeholder="写给这个机器人的话…"></textarea>
+            <label for="report-token">上报令牌</label>
+            <input id="report-token" type="password" spellcheck="false" autocomplete="off" placeholder="只存在本机浏览器" />
+            <button type="submit" id="command-send">发送</button>
+            <p id="command-status" class="command-status" role="status"></p>
+          </form>
           <h2>消息</h2>
           <form id="feed-form" class="feed">
             <label for="feed-url">事件地址</label>

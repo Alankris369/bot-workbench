@@ -105,6 +105,24 @@ export function parseEventFeed(text: string, bots: NamedBot[] = [], maxLines = F
       return { events: [], errors: ['JSON 数组解析失败'], fatal: true }
     }
   }
+  // Relay returns {"events":[...]} as one JSON object.
+  if (trimmed.startsWith('{')) {
+    try {
+      const raw: unknown = JSON.parse(trimmed)
+      if (typeof raw === 'object' && raw !== null && !Array.isArray(raw) && 'events' in raw) {
+        const list = (raw as { events: unknown }).events
+        if (!Array.isArray(list)) {
+          return { events: [], errors: ['events 必须是数组'], fatal: true }
+        }
+        const tail = list.length > maxLines ? list.slice(list.length - maxLines) : list
+        const parsed = collect(tail, bots)
+        return { ...parsed, fatal: false }
+      }
+      // A single event object — treat as one JSONL line below.
+    } catch {
+      // Fall through to line-by-line JSONL parsing.
+    }
+  }
 
   const kept: { line: string; number: number }[] = []
   text.split('\n').forEach((line, index) => {

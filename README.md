@@ -34,7 +34,7 @@ npm test
 
 ## 部署
 
-这一版是静态网站。线上没有 `POST /events`。要让机器人继续说话，把新行写进 `data/events.jsonl` 再发布，或者把事件地址指到一个允许本站读取的文件。
+这一版是静态网站。线上实时事件走 Cloudflare Worker 中转站（见下方「实时中转站」）。`data/events.jsonl` 仍可本地开发或当备用。
 
 ### GitHub Pages
 
@@ -56,10 +56,39 @@ npm test
 
 1. 地址栏里的 `?feed=https://example.com/events.jsonl`
 2. 页面上改过并保存的地址（只存在这台浏览器里）
-3. `data/config.json` 里的 `feed`
+3. `data/config.json` 里的 `feed`（默认已指向中转站）
 4. 站点自己的 `data/events.jsonl`
 
-`feed` 留空就用第 4 种。对方的服务器要允许这个网页去读（CORS）。读失败时，右上角会变成「连接失败」，办公室先留着上次的画面。某一行不是 JSON、编号重复，不会把整份记录清掉。消息列表最多留 40 条。
+对方的服务器要允许这个网页去读（CORS）。读失败时，右上角会变成「连接失败」，办公室先留着上次的画面。某一行不是 JSON、编号重复，不会把整份记录清掉。消息列表最多留 40 条。
+
+## 实时中转站
+
+默认事件地址：
+
+`https://bot-workbench-relay.alankris369.workers.dev/events`
+
+- `GET /events`：公开拉取，返回 `{"events":[...]}`（也兼容原来的 JSONL / JSON 数组）。
+- `POST /events`：机器人上报消息或状态，需要 `Authorization: Bearer <上报令牌>`。
+- `POST /command`：工作台下指令，同样需要上报令牌；中转站再转发到 Grok Bot webhook。
+- `GET /health`：健康检查。
+
+### 在页面上下指令
+
+右侧「下指令」：选机器人、写内容、点发送。
+
+首次发送前，在「上报令牌」里贴一次令牌。它只存在本机浏览器的 `localStorage`（键名 `workbench.reportToken`），不会进仓库、也不会打进静态包。
+
+令牌本体放在共享盒子的 `/workspace/relay/.report-token`，由部署中转站的人保管，**不要提交到 Git**。
+
+机器人上报示例：
+
+```bash
+TOKEN="$(cat /workspace/relay/.report-token)"   # 仅在有权限的机器上
+curl -X POST https://bot-workbench-relay.alankris369.workers.dev/events \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"type":"status","id":"st-1","bot":"测试员","status":"working","activity":"在验收","time":"2026-10-14T12:00:00+08:00"}'
+```
 
 ## 状态文件
 
@@ -110,9 +139,15 @@ npm test
 
 ## 事件流
 
-`data/events.jsonl` 是追加文件：一行一条 JSON。页面默认每 2.5 秒拉一次，已经见过的 `id` 不会再放一遍。同一份文件里如果 `id` 重复，只认第一条。某一行坏了就跳过，其他行照常收。第一次读到的旧消息只进右侧记录，不飞信封。文件很长时，页面只解析最近 200 行，列表里只留最近 40 条。
+页面默认每 2.5 秒拉一次事件地址。已经见过的 `id` 不会再放一遍。同一份里如果 `id` 重复，只认第一条。某一行坏了就跳过，其他行照常收。第一次读到的旧消息只进右侧记录，不飞信封。每次最多解析最近 200 条，列表里只留最近 40 条。
 
-也可以是一个 JSON 数组，字段一样。右上角的圆点是连接状态：绿色是已连接，黄色是有行读不了，红色是连接失败。
+支持三种正文：
+
+1. JSONL：一行一条 JSON（本地 `data/events.jsonl`）
+2. JSON 数组：`[{...},{...}]`
+3. 中转站包装：`{"events":[{...},{...}]}`
+
+右上角的圆点是连接状态：绿色是已连接，黄色是有行读不了，红色是连接失败。
 
 消息：
 
@@ -162,7 +197,7 @@ curl -X POST http://127.0.0.1:43123/events \
   -d '{"type":"message","from":"前端开发","to":"测试员","text":"首页改完了，你看一下。"}'
 ```
 
-这个接口只在 `npm run dev` 或 `npm run preview` 里有。放到 GitHub Pages 上没有服务器，就把新行写进 `data/events.jsonl` 再发布，或者把「事件地址」指到你自己托管的文件。
+这个接口只在 `npm run dev` 或 `npm run preview` 里有。线上请改用中转站的 `POST /events`（见「实时中转站」）。
 
 ## 重放接力
 

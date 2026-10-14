@@ -104,6 +104,34 @@ check('a JSON array parses, and an HTML body is fatal', () => {
   assert.equal(html.events.length, 0)
 })
 
+check('relay {events:[...]} wrapper parses', () => {
+  const body = JSON.stringify({
+    events: [
+      {
+        id: 'r1',
+        type: 'status',
+        bot: '测试员',
+        status: 'working',
+        activity: '链路',
+        time: '2026-10-14T00:00:00.000Z',
+      },
+      {
+        id: 'r2',
+        type: 'message',
+        from: 'frontend',
+        to: 'qa',
+        text: '中转站来的',
+        time: '2026-10-14T00:00:01.000Z',
+      },
+    ],
+  })
+  const parsed = parseEventFeed(body, bots())
+  assert.equal(parsed.fatal, false)
+  assert.equal(parsed.events.length, 2)
+  assert.equal(parsed.events[0]?.type === 'status' && parsed.events[0].bot, 'qa')
+  assert.equal(parsed.events[1]?.type === 'message' && parsed.events[1].text, '中转站来的')
+})
+
 check('duplicate ids are applied once', () => {
   const text = `${message('same', '第一句')}\n${message('same', '第二句')}`
   const result = applyPollResult(emptyFeedState(bots()), { ok: true, text, first: true })

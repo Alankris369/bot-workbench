@@ -25,6 +25,11 @@ import {
   subscribe,
 } from './status'
 import { STATUS_LABEL, type BotRecord, type WorkbenchStatus } from './types'
+import {
+  readReportToken,
+  sendCommand,
+  writeReportToken,
+} from './command'
 
 const stage = must<HTMLElement>('#stage')
 const board = must<HTMLElement>('#board')
@@ -41,6 +46,12 @@ const replayButton = must<HTMLButtonElement>('#replay')
 const feedForm = must<HTMLFormElement>('#feed-form')
 const feedInput = must<HTMLInputElement>('#feed-url')
 const connectionEl = must<HTMLElement>('#connection')
+const commandForm = must<HTMLFormElement>('#command-form')
+const commandTo = must<HTMLSelectElement>('#command-to')
+const commandText = must<HTMLTextAreaElement>('#command-text')
+const reportToken = must<HTMLInputElement>('#report-token')
+const commandSend = must<HTMLButtonElement>('#command-send')
+const commandStatus = must<HTMLElement>('#command-status')
 
 const ctx = canvas.getContext('2d')
 if (!ctx) throw new Error('无法创建画布')
@@ -74,6 +85,16 @@ feedForm.addEventListener('submit', (event) => {
   const next = feedInput.value.trim()
   if (!next) return
   startFeed(next)
+})
+
+reportToken.value = readReportToken()
+reportToken.addEventListener('change', () => {
+  writeReportToken(reportToken.value)
+})
+
+commandForm.addEventListener('submit', (event) => {
+  event.preventDefault()
+  void submitCommand()
 })
 
 window.addEventListener('keydown', (event) => {
@@ -326,6 +347,35 @@ function formatTime(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return iso
   return date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
+}
+
+async function submitCommand(): Promise<void> {
+  const token = reportToken.value.trim()
+  writeReportToken(token)
+  if (!token) {
+    setCommandStatus('err', '请先填写上报令牌（只存在本机浏览器）。')
+    reportToken.focus()
+    return
+  }
+  const to = commandTo.value
+  const instruction = commandText.value
+  commandSend.disabled = true
+  setCommandStatus('busy', '正在发送…')
+  const result = await sendCommand({ to, instruction, token })
+  commandSend.disabled = false
+  if (result.ok) {
+    setCommandStatus('ok', result.detail)
+    commandText.value = ''
+    commandText.focus()
+    return
+  }
+  setCommandStatus('err', result.detail)
+}
+
+function setCommandStatus(state: 'ok' | 'err' | 'busy' | '', text: string): void {
+  if (state) commandStatus.dataset.state = state
+  else delete commandStatus.dataset.state
+  commandStatus.textContent = text
 }
 
 function must<T extends Element>(selector: string): T {
