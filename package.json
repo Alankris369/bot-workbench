@@ -1,0 +1,21 @@
+{
+  "name": "bot-workbench",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 43123 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 43123 --strictPort",
+    "post": "node scripts/post-event.mjs",
+    "test": "node --experimental-strip-types scripts/feed.test.ts",
+    "check": "node scripts/check-phase2.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "^6.3.5"
+  }
+}

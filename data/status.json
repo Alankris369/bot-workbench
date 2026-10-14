@@ -1,0 +1,61 @@
+{
+  "demo": false,
+  "updatedAt": "2026-10-13T15:34:00.000Z",
+  "bots": [
+    {
+      "id": "lead",
+      "name": "总工程师",
+      "role": "lead",
+      "status": "working",
+      "palette": 0,
+      "activity": "在看这一版办公室"
+    },
+    {
+      "id": "frontend",
+      "name": "前端开发",
+      "role": "frontend",
+      "status": "working",
+      "palette": 1,
+      "activity": "在对名字标签"
+    },
+    {
+      "id": "integration",
+      "name": "集成开发",
+      "role": "integration",
+      "status": "idle",
+      "palette": 2,
+      "activity": "这会儿先空着"
+    },
+    {
+      "id": "qa",
+      "name": "测试员",
+      "role": "qa",
+      "status": "waiting",
+      "palette": 3,
+      "activity": "等页面停稳"
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg-seed-1",
+      "from": "lead",
+      "to": "frontend",
+      "text": "四个名字先用这版：总工程师、前端开发、集成开发、测试员。",
+      "time": "2026-10-13T15:33:10.000Z"
+    },
+    {
+      "id": "msg-seed-2",
+      "from": "integration",
+      "to": "lead",
+      "text": "消息先留 from、to、text、time，通道下一阶段再接。",
+      "time": "2026-10-13T15:33:40.000Z"
+    },
+    {
+      "id": "msg-seed-3",
+      "from": "qa",
+      "to": "frontend",
+      "text": "我等角色都站稳了再对一遍。",
+      "time": "2026-10-13T15:33:55.000Z"
+    }
+  ]
+}

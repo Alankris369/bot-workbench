@@ -1,0 +1,3 @@
+{"id":"seed-1","type":"message","from":"lead","to":"frontend","text":"四个名字先用这版：总工程师、前端开发、集成开发、测试员。","time":"2026-10-13T07:33:10.000Z"}
+{"id":"seed-2","type":"message","from":"integration","to":"lead","text":"消息先留 from、to、text、time，通道下一阶段再接。","time":"2026-10-13T07:33:40.000Z"}
+{"id":"seed-3","type":"message","from":"qa","to":"frontend","text":"我等角色都站稳了再对一遍。","time":"2026-10-13T07:33:55.000Z"}

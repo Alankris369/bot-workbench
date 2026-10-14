@@ -1,0 +1,22 @@
+Bot Workbench
+================
+
+This project shows a small team of bots as pixel characters in an office.
+The characters, floors, walls, furniture, and pets under public/assets/ are
+an unmodified copy of the default asset pack from:
+
+  Pixel Agents
+  https://github.com/pixel-agents-hq/pixel-agents
+  Commit d1e007a9fdf3003c252d2973abe1999ae59aec33
+  Copyright (c) 2026 Pablo De Lucca
+  Licensed under the MIT License. See LICENSE.
+
+The sprite sheet layout (7 frames x 16px, 3 direction rows x 32px),
+the wall bitmask (N=1, E=2, S=4, W=8), the 6px sitting offset, and the
+Photoshop-style floor colorize follow that project. Bot Workbench does not
+ship the VS Code extension. It draws the default PNGs on a standalone page.
+
+Bot Workbench's own application code is released under the same MIT License.
+The copyright notice above must stay with any copy of the Pixel Agents assets.
+
+The office arrangement (where each desk sits) is Bot Workbench's. The pictures are not.

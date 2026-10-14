@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#12121c" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./assets/characters/char_0.png" />
+    <title>机器人工作台</title>
+    <meta
+      name="description"
+      content="四个像素机器人在一间办公室里。消息和状态来自事件流。"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <div class="brand">
+          <h1>机器人工作台</h1>
+          <p>四个像素机器人。消息和状态来自事件流。</p>
+        </div>
+        <div class="legend" aria-hidden="true">
+          <span><i class="dot"></i>空闲</span>
+          <span><i class="dot working"></i>工作中</span>
+          <span><i class="dot waiting"></i>等待</span>
+        </div>
+        <div class="actions">
+          <p id="connection" class="connection" data-state="connecting" role="status">
+            <i aria-hidden="true"></i>
+            <span>正在连接</span>
+          </p>
+          <button id="replay" type="button" disabled>重放接力</button>
+          <button id="demo-toggle" type="button" aria-pressed="false">演示模式：关</button>
+          <button id="reload" type="button">重新读取</button>
+        </div>
+      </header>
+      <p id="banner" class="banner" role="status" hidden></p>
+      <main>
+        <section id="stage" aria-label="办公室">
+          <p id="loading" class="loading">正在把办公室搬出来…</p>
+          <div id="board" hidden>
+            <canvas id="office" width="288" height="224">像素办公室</canvas>
+            <div id="floaters"></div>
+          </div>
+        </section>
+        <aside id="panel">
+          <h2>成员</h2>
+          <ul id="bot-list"></ul>
+          <h2>消息</h2>
+          <form id="feed-form" class="feed">
+            <label for="feed-url">事件地址</label>
+            <input id="feed-url" type="text" spellcheck="false" autocomplete="off" />
+            <button type="submit">改地址</button>
+          </form>
+          <p class="hint">新消息从头上冒出来，再飞到对方那边。对方会变成工作中。时间按上海时间显示。</p>
+          <ol id="msg-list"></ol>
+          <p id="file-meta" class="meta"></p>
+        </aside>
+      </main>
+      <footer>
+        <span>角色、地板、墙和家具是 Pixel Agents 的默认素材，没有改过图。</span>
+        <a href="https://github.com/pixel-agents-hq/pixel-agents">pixel-agents</a>
+        <span>MIT · Pablo De Lucca</span>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

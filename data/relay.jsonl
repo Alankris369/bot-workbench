@@ -1,0 +1,6 @@
+{"id":"relay-1","type":"message","from":"frontend","to":"integration","text":"首页改完了，接口按这个对一下。","time":"2026-10-13T08:00:00.000Z"}
+{"id":"relay-1s","type":"status","bot":"integration","status":"working","activity":"在对前端的接口","time":"2026-10-13T08:00:00.200Z"}
+{"id":"relay-2","type":"message","from":"integration","to":"qa","text":"接口对齐了，请验收。","time":"2026-10-13T08:01:00.000Z"}
+{"id":"relay-2s","type":"status","bot":"qa","status":"working","activity":"在验收接力","time":"2026-10-13T08:01:00.200Z"}
+{"id":"relay-3","type":"message","from":"qa","to":"lead","text":"验收通过，请你拍板。","time":"2026-10-13T08:02:00.000Z"}
+{"id":"relay-3s","type":"status","bot":"lead","status":"working","activity":"在看验收结果","time":"2026-10-13T08:02:00.200Z"}
