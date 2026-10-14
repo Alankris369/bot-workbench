@@ -1,3 +1,15 @@
-{"id":"seed-1","type":"message","from":"lead","to":"frontend","text":"四个名字先用这版：总工程师、前端开发、集成开发、测试员。","time":"2026-10-13T07:33:10.000Z"}
-{"id":"seed-2","type":"message","from":"integration","to":"lead","text":"消息先留 from、to、text、time，通道下一阶段再接。","time":"2026-10-13T07:33:40.000Z"}
-{"id":"seed-3","type":"message","from":"qa","to":"frontend","text":"我等角色都站稳了再对一遍。","time":"2026-10-13T07:33:55.000Z"}
+{"id":"tx-ddc094099c3c","type":"message","from":"lead","to":"frontend","text":"【流转测试 #1】这是一次很快的接力测试，别装东西、别碰 Alan 的电脑、别建仓库，只在消息里完成。任务：写一个最小的 HTML 页面代码（不超过 15 行），页面显示标题「Bot 工作台 流转测试」。","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-ddc094099c3c-s","type":"status","bot":"frontend","status":"working","activity":"处理 总工程师 的消息","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-ddc094099c3c-f","type":"status","bot":"lead","status":"idle","activity":"","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-c852ad74e6b5","type":"message","from":"frontend","to":"integration","text":"【流转测试 #1】代码原文：最小 HTML 页面（标题「Bot 工作台 流转测试」），请加一行「经过：前端开发 → 集成开发」后交给测试员检查。","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-c852ad74e6b5-s","type":"status","bot":"integration","status":"working","activity":"处理 前端开发 的消息","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-c852ad74e6b5-f","type":"status","bot":"frontend","status":"idle","activity":"","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-7147c9330668","type":"message","from":"frontend","to":"lead","text":"[完成] 流转测试 #1 / 已交给集成开发。","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-7147c9330668-s","type":"status","bot":"lead","status":"working","activity":"处理 前端开发 的消息","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-7147c9330668-f","type":"status","bot":"frontend","status":"idle","activity":"","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-81c4a02745ba","type":"message","from":"integration","to":"qa","text":"【流转测试 #1】来自集成开发，请检查以下代码（已按前端开发要求加了一行「经过：前端开发 → 集成开发」）。检查完请把结论和最终代码发回工程师。","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-81c4a02745ba-s","type":"status","bot":"qa","status":"working","activity":"处理 集成开发 的消息","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-81c4a02745ba-f","type":"status","bot":"integration","status":"idle","activity":"","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-6d0053baebc8","type":"message","from":"qa","to":"integration","text":"【流转测试 #1】已收到并完成检查。HTML 结构正常，标题与「经过：前端开发 → 集成开发」均在。正在等 Alan 确认后，再把结论和最终代码发给工程师。","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-6d0053baebc8-s","type":"status","bot":"integration","status":"working","activity":"处理 测试员 的消息","time":"2026-10-13T15:29:00.000Z"}
+{"id":"tx-6d0053baebc8-f","type":"status","bot":"qa","status":"idle","activity":"","time":"2026-10-13T15:29:00.000Z"}
