@@ -7,6 +7,7 @@ export const RELAY_BASE = 'https://bot-workbench-relay.alankris369.workers.dev'
 export const RELAY_EVENTS_URL = `${RELAY_BASE}/events`
 export const RELAY_COMMAND_URL = `${RELAY_BASE}/command`
 export const RELAY_HEALTH_URL = `${RELAY_BASE}/health`
+export const RELAY_STREAM_URL = `${RELAY_BASE}/events/stream`
 
 export const REPORT_TOKEN_KEY = 'workbench.reportToken'
 
@@ -16,6 +17,14 @@ export const COMMAND_TARGETS: { id: string; label: string }[] = [
   { id: 'integration', label: '集成开发' },
   { id: 'qa', label: '测试员' },
 ]
+
+/** Shape POSTed to the relay /command endpoint. */
+export function buildCommandPayload(to: string, instruction: string): { to: string; instruction: string } | null {
+  const t = to.trim()
+  const i = instruction.trim()
+  if (!t || !i) return null
+  return { to: t, instruction: i }
+}
 
 export type CommandResult =
   | { ok: true; status: number; detail: string }
@@ -45,11 +54,13 @@ export async function sendCommand(input: {
   token: string
   url?: string
 }): Promise<CommandResult> {
-  const to = input.to.trim()
-  const instruction = input.instruction.trim()
   const token = input.token.trim()
-  if (!to) return { ok: false, status: 0, detail: '请选择发给谁' }
-  if (!instruction) return { ok: false, status: 0, detail: '请填写指令' }
+  const payload = buildCommandPayload(input.to, input.instruction)
+  if (!payload) {
+    if (!input.to.trim()) return { ok: false, status: 0, detail: '请选择发给谁' }
+    if (!input.instruction.trim()) return { ok: false, status: 0, detail: '请填写指令' }
+    return { ok: false, status: 0, detail: '请填写指令' }
+  }
   if (!token) return { ok: false, status: 0, detail: '请先填写上报令牌' }
 
   const url = input.url ?? RELAY_COMMAND_URL
@@ -60,7 +71,7 @@ export async function sendCommand(input: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ to, instruction }),
+      body: JSON.stringify(payload),
     })
     let detail = `HTTP ${response.status}`
     try {

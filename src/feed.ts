@@ -24,7 +24,7 @@ export const CONNECTION_LABEL: Record<Connection, string> = {
   connecting: '正在连接',
   live: '已连接',
   degraded: '有行读不了',
-  offline: '连接失败',
+  offline: '已断开',
 }
 
 export interface NamedBot {

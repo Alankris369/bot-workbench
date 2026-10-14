@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 43123 --strictPort",
     "post": "node scripts/post-event.mjs",
-    "test": "node --experimental-strip-types scripts/feed.test.ts",
+    "test": "tsx scripts/feed.test.ts",
     "check": "node scripts/check-phase2.mjs"
   },
   "engines": {
@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "typescript": "~5.9.3",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "tsx": "^4.19.2"
   }
 }

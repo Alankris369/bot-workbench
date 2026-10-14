@@ -185,18 +185,26 @@ function renderChrome(view: WorkbenchStatus): void {
   if (connectionText) connectionText.textContent = CONNECTION_LABEL[feed.connection]
   if (feed.error) {
     banner.hidden = false
-    banner.textContent = feed.connection === 'offline' ? `${feed.error} 画面先留着上次的数据。` : feed.error
+    banner.dataset.kind = feed.connection === 'offline' ? 'offline' : 'warn'
+    const keep = feed.connection === 'offline' ? ' 画面先留着上次的数据，正在自动重试。' : ''
+    banner.textContent = `${feed.error}${keep}`
   } else if (loadNote) {
     banner.hidden = false
+    banner.dataset.kind = 'warn'
     banner.textContent = loadNote
   } else {
     banner.hidden = true
+    banner.dataset.kind = ''
     banner.textContent = ''
   }
   renderBots(view)
   renderMessages(view)
   const demo = isDemoOn() ? '演示开着。' : '演示关着。'
-  fileMeta.textContent = `${demo}已收 ${feed.applied} 条，每 2.5 秒看一次。时间是上海时间。`
+  const how =
+    feed.mode === 'sse'
+      ? '优先实时推送，标签页可见时约 1.2 秒补拉一次。'
+      : '标签页可见时约 1.2 秒拉一次，切到后台会放慢。'
+  fileMeta.textContent = `${demo}已收 ${feed.applied} 条。${how}时间是上海时间。`
 }
 
 const DUTY: Record<string, string> = {

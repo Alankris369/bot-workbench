@@ -10,7 +10,25 @@ import {
   type FeedBot,
   type FeedState,
 } from '../src/feed.ts'
-import { httpFeedSource, openFeed, pageUrl, type FeedSource } from '../src/source.ts'
+import {
+  buildCommandPayload,
+  RELAY_COMMAND_URL,
+  RELAY_EVENTS_URL,
+  RELAY_STREAM_URL,
+} from '../src/command.ts'
+import {
+  httpFeedSource,
+  liveFeedSource,
+  openAdaptiveFeed,
+  openFeed,
+  pageUrl,
+  pollIntervalMs,
+  POLL_HIDDEN_MS,
+  POLL_SSE_BACKUP_MS,
+  POLL_VISIBLE_MS,
+  streamUrlFromEvents,
+  type FeedSource,
+} from '../src/source.ts'
 
 const results: { name: string; ok: boolean; detail: string }[] = []
 const pending: Promise<void>[] = []
@@ -233,7 +251,7 @@ check('a network error keeps the previous log', () => {
   assert.equal(failed.state.messages.length, 1)
   assert.equal(failed.state.messages[0]?.text, '留下')
   assert.equal(qa(failed.state).status, 'waiting')
-  assert.equal(CONNECTION_LABEL.offline, '连接失败')
+  assert.equal(CONNECTION_LABEL.offline, '已断开')
 })
 
 check('HTML instead of a feed does not wipe the log', () => {
@@ -292,6 +310,156 @@ check('a push source delivers without a poll timer', () => {
   assert.equal(texts.some((text) => text.includes('桥')), true)
   assert.equal(pulls, 1)
   stop()
+})
+
+
+check('offline recovery restores live without wiping messages', () => {
+  const first = applyPollResult(emptyFeedState(bots()), { ok: true, text: message('keep', '还在'), first: true })
+  const down = applyPollResult(first.state, { ok: false, error: '事件流读取失败：HTTP 502' })
+  assert.equal(down.connection, 'offline')
+  assert.equal(down.state.messages[0]?.text, '还在')
+  const up = applyPollResult(down.state, {
+    ok: true,
+    text: `${message('keep', '还在')}\n${message('new', '回来了')}`,
+    first: false,
+  })
+  assert.equal(up.connection, 'live')
+  assert.equal(up.state.messages.length, 2)
+  assert.equal(up.animate.length, 1)
+  assert.equal(up.animate[0]?.id, 'new')
+  assert.equal(CONNECTION_LABEL.offline, '已断开')
+})
+
+check('relay wrapper with empty events is live and non-fatal', () => {
+  const result = applyPollResult(emptyFeedState(bots()), {
+    ok: true,
+    text: JSON.stringify({ events: [] }),
+    first: true,
+  })
+  assert.equal(result.connection, 'live')
+  assert.equal(result.ready, true)
+  assert.equal(result.state.messages.length, 0)
+})
+
+check('buildCommandPayload trims and rejects blanks', () => {
+  assert.deepEqual(buildCommandPayload(' qa ', ' 测一下 '), { to: 'qa', instruction: '测一下' })
+  assert.equal(buildCommandPayload('', 'x'), null)
+  assert.equal(buildCommandPayload('qa', '  '), null)
+  assert.ok(RELAY_COMMAND_URL.endsWith('/command'))
+  assert.ok(RELAY_EVENTS_URL.endsWith('/events'))
+  assert.ok(RELAY_STREAM_URL.endsWith('/events/stream'))
+})
+
+check('streamUrlFromEvents maps /events to /events/stream', () => {
+  assert.equal(
+    streamUrlFromEvents('https://bot-workbench-relay.alankris369.workers.dev/events'),
+    'https://bot-workbench-relay.alankris369.workers.dev/events/stream',
+  )
+  assert.equal(streamUrlFromEvents('https://example.com/data/events.jsonl'), null)
+  assert.equal(streamUrlFromEvents(''), null)
+})
+
+check('pollIntervalMs backs off when hidden and when SSE is healthy', () => {
+  assert.equal(pollIntervalMs({ visible: true, pushHealthy: false }), POLL_VISIBLE_MS)
+  assert.equal(pollIntervalMs({ visible: false, pushHealthy: false }), POLL_HIDDEN_MS)
+  assert.equal(pollIntervalMs({ visible: true, pushHealthy: true }), POLL_SSE_BACKUP_MS)
+  assert.ok(POLL_VISIBLE_MS <= 1500 && POLL_VISIBLE_MS >= 1000)
+})
+
+check('liveFeedSource still pulls when EventSource factory returns null', async () => {
+  const pulls: string[] = []
+  const source = liveFeedSource(
+    'https://bot-workbench-relay.alankris369.workers.dev/events',
+    async (url) => {
+      pulls.push(url)
+      return { ok: true, status: 200, text: JSON.stringify({ events: [] }) }
+    },
+    () => null,
+  )
+  // subscribe exists for relay URLs but is a no-op when the factory cannot open a stream
+  assert.equal(typeof source.subscribe, 'function')
+  const stop = source.subscribe?.(() => {})
+  stop?.()
+  const pull = await source.pull()
+  assert.equal(pull.ok, true)
+  assert.equal(pulls[0], 'https://bot-workbench-relay.alankris369.workers.dev/events')
+})
+
+check('openAdaptiveFeed slows down when not visible', async () => {
+  const delays: number[] = []
+  let visible = true
+  let pullCount = 0
+  const source: FeedSource = {
+    label: 'test',
+    async pull() {
+      pullCount += 1
+      return { ok: true, text: JSON.stringify({ events: [] }) }
+    },
+  }
+  const timers: Array<{ fn: () => void; ms: number }> = []
+  const stop = openAdaptiveFeed(
+    source,
+    () => {},
+    (fn, ms) => {
+      delays.push(ms)
+      timers.push({ fn, ms })
+      return () => {}
+    },
+    {
+      visibleMs: 1200,
+      hiddenMs: 8000,
+      backupMs: 5000,
+      isVisible: () => visible,
+      onVisibilityChange: () => () => {},
+    },
+  )
+  // Allow the initial pull promise to settle.
+  await Promise.resolve()
+  await Promise.resolve()
+  assert.ok(pullCount >= 1)
+  assert.equal(delays[0], 1200)
+  visible = false
+  // Fire the scheduled tick to re-arm with hidden delay.
+  timers[0]?.fn()
+  await Promise.resolve()
+  await Promise.resolve()
+  assert.ok(delays.some((ms) => ms === 8000))
+  stop()
+})
+
+check('openAdaptiveFeed uses SSE subscribe when present', async () => {
+  const texts: string[] = []
+  let unsub = 0
+  const source: FeedSource = {
+    label: 'relay',
+    async pull() {
+      return { ok: true, text: JSON.stringify({ events: [] }) }
+    },
+    subscribe(onData) {
+      onData({ ok: true, text: JSON.stringify({ events: [{ id: 's', type: 'status', bot: 'qa', status: 'idle', activity: '', time: '2026-10-14T00:00:00.000Z' }] }) })
+      return () => {
+        unsub += 1
+      }
+    },
+  }
+  const stop = openAdaptiveFeed(
+    source,
+    (pull) => {
+      if (pull.ok) texts.push(pull.text)
+    },
+    (fn, ms) => {
+      const id = setTimeout(fn, ms)
+      return () => clearTimeout(id)
+    },
+    {
+      isVisible: () => true,
+      onVisibilityChange: () => () => {},
+    },
+  )
+  await Promise.resolve()
+  assert.ok(texts.some((text) => text.includes('"id":"s"')))
+  stop()
+  assert.equal(unsub, 1)
 })
 
 await Promise.all(pending)

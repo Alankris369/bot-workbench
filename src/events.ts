@@ -8,11 +8,15 @@ import {
   type FeedState,
   type PollResult,
 } from './feed'
+import { RELAY_EVENTS_URL, RELAY_HEALTH_URL } from './command'
 import {
   browserTextFetch,
   httpFeedSource,
+  liveFeedSource,
+  openAdaptiveFeed,
   openFeed,
   pageUrl,
+  streamUrlFromEvents,
   type FeedPull,
   type FeedSource,
 } from './source'
@@ -24,6 +28,7 @@ export type { FeedSource } from './source'
 export { parseEventFeed, previewText, resolveBotId, resolveFeedUrl } from './feed'
 export type { Connection } from './feed'
 
+/** Fallback fixed interval for non-relay feeds and tests. */
 const POLL_MS = 2500
 const FLIGHT_MS = 1800
 const SPEECH_MS = 4200
@@ -57,6 +62,9 @@ let configFeed: string | null = null
 let configLoaded = false
 let stopFeed: () => void = () => {}
 let settleReady: (() => void) | null = null
+/** 'sse' when EventSource is armed for a relay URL; otherwise 'poll'. */
+let feedMode: 'sse' | 'poll' = 'poll'
+let healthProbing = false
 
 export function pollIntervalMs(): number {
   return POLL_MS
@@ -95,6 +103,7 @@ export function feedSnapshot(): {
   replaying: boolean
   error: string | null
   connection: Connection
+  mode: 'sse' | 'poll'
 } {
   return {
     ready,
@@ -105,6 +114,7 @@ export function feedSnapshot(): {
     replaying,
     error,
     connection,
+    mode: feedMode,
   }
 }
 
@@ -162,7 +172,7 @@ export async function startFeed(url?: string): Promise<void> {
     feedUrl = defaultFeedUrl()
   }
   resetCursor()
-  arm(httpFeedSource(feedUrl))
+  arm(chooseSource(feedUrl))
 }
 
 /** Swap the HTTP poll for a push source. A native shell can call this later. */
@@ -194,7 +204,7 @@ export async function reloadFeed(): Promise<void> {
   if (query) feedUrl = query
   else if (!readSavedFeed()) feedUrl = defaultFeedUrl()
   resetCursor()
-  arm(httpFeedSource(feedUrl))
+  arm(chooseSource(feedUrl))
   await whenReady()
 }
 
@@ -260,20 +270,57 @@ function resetCursor(): void {
   ready = false
   connection = 'connecting'
   error = null
+  feedMode = 'poll'
+}
+
+function chooseSource(url: string): FeedSource {
+  // Relay-style absolute /events URLs get SSE + adaptive poll.
+  // Local JSONL / overrides stay on plain HTTP poll.
+  if (streamUrlFromEvents(url)) {
+    feedMode = 'sse'
+    return liveFeedSource(url)
+  }
+  feedMode = 'poll'
+  return httpFeedSource(url)
 }
 
 function arm(source: FeedSource): void {
   stopFeed()
   const gen = generation
-  stopFeed = openFeed(
-    source,
-    (pull) => accept(gen, pull),
-    POLL_MS,
-    (fn, ms) => {
-      const id = window.setInterval(fn, ms)
-      return () => window.clearInterval(id)
-    },
-  )
+  const schedule = (fn: () => void, ms: number) => {
+    const id = window.setTimeout(fn, ms)
+    return () => window.clearTimeout(id)
+  }
+  if (source.subscribe) {
+    if (feedMode !== 'sse') feedMode = 'sse'
+    stopFeed = openAdaptiveFeed(source, (pull) => accept(gen, pull), schedule)
+    return
+  }
+  feedMode = 'poll'
+  stopFeed = openFeed(source, (pull) => accept(gen, pull), POLL_MS, (fn, ms) => {
+    const id = window.setInterval(fn, ms)
+    return () => window.clearInterval(id)
+  })
+}
+
+async function enrichOfflineError(raw: string): Promise<string> {
+  // Only probe the known relay health endpoint — custom feeds stay as-is.
+  const url = getFeedUrl()
+  const isRelay =
+    url.startsWith(RELAY_EVENTS_URL.replace(/\/events$/, '')) || url === RELAY_EVENTS_URL
+  if (!isRelay || healthProbing) return raw
+  healthProbing = true
+  try {
+    const read = await browserTextFetch()(RELAY_HEALTH_URL)
+    if (read.ok && read.status >= 200 && read.status < 300) {
+      return `事件源异常：${raw}`
+    }
+    return `网络断开：${raw}`
+  } catch {
+    return `网络断开：${raw}`
+  } finally {
+    healthProbing = false
+  }
 }
 
 function whenReady(): Promise<void> {
@@ -305,8 +352,18 @@ function accept(gen: number, pull: FeedPull): void {
     settleReady = null
     return
   }
-  if (!pull.ok) writeResult(applyPollResult(readState(), pull))
-  else writeResult(applyPollResult(readState(), { ok: true, text: pull.text, first: !ready }))
+  if (!pull.ok) {
+    const result = applyPollResult(readState(), pull)
+    writeResult(result)
+    void enrichOfflineError(pull.error).then((message) => {
+      if (gen !== generation) return
+      if (connection !== 'offline') return
+      error = message
+      touchView()
+    })
+  } else {
+    writeResult(applyPollResult(readState(), { ok: true, text: pull.text, first: !ready }))
+  }
   settleReady?.()
   settleReady = null
 }

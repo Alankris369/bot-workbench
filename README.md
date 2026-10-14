@@ -61,6 +61,23 @@ npm test
 
 对方的服务器要允许这个网页去读（CORS）。读失败时，右上角会变成「连接失败」，办公室先留着上次的画面。某一行不是 JSON、编号重复，不会把整份记录清掉。消息列表最多留 40 条。
 
+## 运维速查
+
+| 项 | 地址 / 做法 |
+| --- | --- |
+| 工作台页面 | https://alankris369.github.io/bot-workbench/ |
+| 中转站 | https://bot-workbench-relay.alankris369.workers.dev |
+| 事件拉取 | `GET /events` → `{"events":[...]}` |
+| 实时推送 | `GET /events/stream`（SSE，约 25 秒一截，浏览器自动重连） |
+| 健康检查 | `GET /health` |
+| 页面下指令 | 右侧「下指令」；上报令牌贴一次，存在本机 `localStorage`（`workbench.reportToken`） |
+| Bot 上报 | `curl` + `Authorization: Bearer $(cat /workspace/relay/.report-token)` → `POST /events` |
+| 架构 A | 指令经 Worker → Grok Bot routine webhook；状态由各 bot `curl` 推到 Worker；页面读 Worker |
+
+**不要把** `REPORT_TOKEN`、`WEBHOOK_*`、`CLOUDFLARE_API_TOKEN` 写进仓库或 README。
+
+实时策略：优先 SSE（`EventSource` → `/events/stream`）；拉流失败或非中转站地址时，退回轮询。标签页可见时约 **1.2 秒** 拉一次，切到后台约 **8 秒**；SSE 正常时备份轮询约 **5 秒**。断线保留上次画面，自动重试；若 `/health` 仍通则提示「事件源异常」，否则「网络断开」。
+
 ## 实时中转站
 
 默认事件地址：
@@ -68,6 +85,7 @@ npm test
 `https://bot-workbench-relay.alankris369.workers.dev/events`
 
 - `GET /events`：公开拉取，返回 `{"events":[...]}`（也兼容原来的 JSONL / JSON 数组）。
+- `GET /events/stream`：Server-Sent Events，推送同样的 `{"events":[...]}` 快照。
 - `POST /events`：机器人上报消息或状态，需要 `Authorization: Bearer <上报令牌>`。
 - `POST /command`：工作台下指令，同样需要上报令牌；中转站再转发到 Grok Bot webhook。
 - `GET /health`：健康检查。
@@ -139,7 +157,7 @@ curl -X POST https://bot-workbench-relay.alankris369.workers.dev/events \
 
 ## 事件流
 
-页面默认每 2.5 秒拉一次事件地址。已经见过的 `id` 不会再放一遍。同一份里如果 `id` 重复，只认第一条。某一行坏了就跳过，其他行照常收。第一次读到的旧消息只进右侧记录，不飞信封。每次最多解析最近 200 条，列表里只留最近 40 条。
+页面优先走 SSE；否则（或作为备份）在标签页可见时约每 1.2 秒拉一次事件地址，后台会放慢。已经见过的 `id` 不会再放一遍。同一份里如果 `id` 重复，只认第一条。某一行坏了就跳过，其他行照常收。第一次读到的旧消息只进右侧记录，不飞信封。每次最多解析最近 200 条，列表里只留最近 40 条。
 
 支持三种正文：
 
@@ -147,7 +165,7 @@ curl -X POST https://bot-workbench-relay.alankris369.workers.dev/events \
 2. JSON 数组：`[{...},{...}]`
 3. 中转站包装：`{"events":[{...},{...}]}`
 
-右上角的圆点是连接状态：绿色是已连接，黄色是有行读不了，红色是连接失败。
+右上角的圆点是连接状态：黄闪是正在连接，绿色是已连接，黄色是有行读不了，红色是已断开。断线时顶部横幅会说明原因，并自动重试。
 
 消息：
 
@@ -214,10 +232,10 @@ curl -X POST http://127.0.0.1:43123/events \
 现在不打包 Tauri、Electron 或 Capacitor。页面已经按能放进这些壳里来写。
 
 - 解析和状态在 `src/feed.ts`，不画画面，也不自己发请求。
-- 事件从 `src/source.ts` 的 `FeedSource` 进来。现在是 HTTP 轮询（`pull`）。以后的 WebSocket，或壳里的原生桥，实现同一个接口，用 `subscribe` 推一整份文本即可，不用改办公室。
+- 事件从 `src/source.ts` 的 `FeedSource` 进来。中转站用 `liveFeedSource`（SSE `subscribe` + 可见性自适应 `pull`）。以后的 WebSocket，或壳里的原生桥，实现同一个接口，用 `subscribe` 推一整份文本即可，不用改办公室。
 - 壳可以在页面加载前设置 `window.__WORKBENCH_SOURCE__`，或在加载后调用 `window.workbench.useFeedSource(source)`。
-- 图片和数据用相对路径（`./assets/...`、`./data/...`），不写死域名或端口。webview 用自己的地址打开 `dist/` 即可。
-- 已加上 PWA manifest、`viewport-fit=cover`、安全区边距，以及按钮和办公室的触摸滚动。图标仍用默认角色图。
+- 图片和数据用相对路径（`./assets/...`、`./data/...`），不写死域名或端口。webview 用自己的地址打开 `dist/` 即可。窄屏会上下堆叠办公室和侧栏，画布仍按 `fitZoom` 缩放。
+- 已加上 PWA manifest（192/512 图标）、`viewport-fit=cover`、安全区边距，以及按钮和办公室的触摸滚动，方便「添加到主屏幕」。
 
 壳只负责装进 `dist/`，需要的话再换成自己的事件来源。
 
