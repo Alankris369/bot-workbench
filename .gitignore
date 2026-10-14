@@ -3,3 +3,11 @@ dist
 .DS_Store
 agent-tools
 *.log
+
+# secrets — never commit
+.env
+.env.*
+!.env.example
+.report-token
+*.pem
+*.key
